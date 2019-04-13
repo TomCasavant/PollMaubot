@@ -19,10 +19,12 @@ class Poll:
         self.votes = [0] * len(choices)  # initialize all votes to zero
         self.voters = []
         self.active = True
+        self.total = 0
 
     def vote(self, choice, user_id):
-        self.votes[choice-1] += 1
+        self.votes[choice - 1] += 1
         self.voters.append(user_id)
+        self.total += 1
 
     def isAvailable(self, choice):
         return choice <= len(self.choices)
@@ -35,11 +37,15 @@ class Poll:
 
     def get_results(self):
         results = "<br />".join(
-            [f"{choice}: {self.votes[i]}" for i, choice in enumerate(self.choices)]
+            [
+                f"{choice}: {self.votes[i]} | {round(self.votes[i]/self.total if self.total else 0,3) * 100}%"
+                for i, choice in enumerate(self.choices)
+            ]
         )
+        results = f"{self.question}:<br />" + results
         return results
 
-    def end_poll(self):
+    def close_poll(self):
         self.active = False
 
 
@@ -91,9 +97,8 @@ class PollPlugin(Plugin):
         await evt.mark_read()
         await evt.reply(self.currentPoll.get_results(), html_in_markdown=True)
 
-
-    @poll.subcommand("end")
+    @poll.subcommand("close")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        self.currentPoll.end_poll()
+        self.currentPoll.close_poll()
         await evt.reply("This poll is now over. Type !poll results to see the results.")
