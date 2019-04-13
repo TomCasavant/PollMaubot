@@ -12,8 +12,32 @@ class Config(BaseProxyConfig):
         def do_update(self, helper: ConfigUpdateHelper) -> None:"""
 
 
+class Poll:
+    def __init__(self, question, choices):
+        self.question = question
+        self.choices = choices
+        self.votes = [0] * len(choices)  # initialize all votes to zero
+        self.voters = []
+
+    def vote(self, choice, user_id):
+        self.votes[choice-1] += 1
+        self.voters.append(user_id)
+
+    def get_results(self):
+        results = "<br />".join(
+            [f"{choice}: {self.votes[i]}" for i, choice in enumerate(self.choices)]
+        )
+        return results
+
+
 class PollPlugin(Plugin):
-    @command.new("poll")
+    currentPoll = Poll("None", ["None"])
+
+    @command.new("poll", help="Make a poll")
+    async def poll(self) -> None:
+        pass
+
+    @poll.subcommand("new")
     @command.argument("poll_setup", pass_raw=True, required=True)
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
@@ -26,10 +50,25 @@ class PollPlugin(Plugin):
         if len(choices) <= 1:
             response = "You need to enter at least 2 choices."
         else:
+            self.currentPoll = Poll(question, choices)
             # Show users active poll
-            choice_list = "\n".join(
-                ["{}. {}".format(x + 1, choices[x]) for x in range(len(choices))]
+            choice_list = "<br />".join(
+                [f"{i+1}. {choice}" for i, choice in enumerate(choices)]
             )
-            response = "{}\n{}".format(question, choice_list)
+            response = f"{question}<br />{choice_list}"
 
         await evt.reply(response, html_in_markdown=True)
+
+    @poll.subcommand("vote")
+    @command.argument("choice", pass_raw=True, required=True)
+    async def handler(self, evt: MessageEvent, choice: int) -> None:
+        await evt.mark_read()
+        if evt.sender in self.currentPoll.voters:
+            await evt.reply("You've already voted in this poll")
+        else:
+            self.currentPoll.vote(int(choice), evt.sender)
+
+    @poll.subcommand("results")
+    async def handler(self, evt: MessageEvent) -> None:
+        await evt.mark_read()
+        await evt.reply(self.currentPoll.get_results())
