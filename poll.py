@@ -18,27 +18,33 @@ class Poll:
         self.choices = choices
         self.votes = [0] * len(choices)  # initialize all votes to zero
         self.voters = []
-        self.active = True
+        self.active = True  # Begins the poll
         self.total = 0
 
     def vote(self, choice, user_id):
+        # Adds a vote to the given choice
         self.votes[choice - 1] += 1
+        # Adds user to list of users who have already voted
         self.voters.append(user_id)
         self.total += 1
 
     def isAvailable(self, choice):
+        # Checks if given choice is an option
         return choice <= len(self.choices)
 
     def hasVoted(self, user):
+        # Checks if user has already voted
         return user in self.voters
 
     def isActive(self):
+        # Checks if the poll is currently active
         return self.active
 
     def get_results(self):
+        # Formats the results with percentages
         results = "<br />".join(
             [
-                f"{choice}: {self.votes[i]} | {round(self.votes[i]/self.total if self.total else 0,3) * 100}%"
+                f"{choice:<12}: {self.votes[i]:<12} | {round(self.votes[i]/self.total if self.total else 0,3) * 100}%"
                 for i, choice in enumerate(self.choices)
             ]
         )
@@ -57,10 +63,15 @@ class PollPlugin(Plugin):
         pass
 
     @poll.subcommand("new")
-    @command.argument("poll_setup", pass_raw=True, required=True)
+    @command.argument(
+        "poll_setup",
+        pass_raw=True,
+        required=True,
+        help='Creates a new poll with "Question" "choice" "choice" "choice" ... ',
+    )
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
-        r = re.compile(QUOTES_REGEX)
+        r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
         setup = [
             s for s in r.split(poll_setup) if s != ""
         ]  # Split string between quotes
@@ -79,25 +90,30 @@ class PollPlugin(Plugin):
         await evt.reply(response, html_in_markdown=True)
 
     @poll.subcommand("vote")
-    @command.argument("choice", pass_raw=True, required=True)
+    @command.argument(
+        "choice", pass_raw=True, required=True, help="Votes for an option"
+    )
     async def handler(self, evt: MessageEvent, choice: int) -> None:
         await evt.mark_read()
+        # Verify the user is able to vote
         if self.currentPoll.hasVoted(evt.sender):
             await evt.reply("You've already voted in this poll")
         elif not self.currentPoll.isActive():
             await evt.reply("I'm sorry this poll has already ended")
         else:
+            # Checks if user entered a valid vote
             if self.currentPoll.isAvailable(int(choice)):
+                # Makes the vote
                 self.currentPoll.vote(int(choice), evt.sender)
             else:
                 await evt.reply("You must enter a valid choice")
 
-    @poll.subcommand("results")
+    @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
         await evt.reply(self.currentPoll.get_results(), html_in_markdown=True)
 
-    @poll.subcommand("close")
+    @poll.subcommand("close", help="Ends the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
         self.currentPoll.close_poll()
