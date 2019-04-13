@@ -1,5 +1,5 @@
 # Poll Maubot
-A bot for [maubot](https://github.com/maubot/maubot) that creates a poll in a riot room and allows users to vote
+A plugin for [maubot](https://github.com/maubot/maubot) that creates a poll in a riot room and allows users to vote
 
 ## Usage
 '!poll new  "Question" "Choice1" "Choice2" "Choice3"' - Creates a new poll with given (at least 1) choices
