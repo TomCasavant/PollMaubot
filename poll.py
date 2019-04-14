@@ -7,10 +7,6 @@ from maubot.handlers import command
 
 QUOTES_REGEX = r"\"?\s*?\""  # Regex to split string between quotes
 
-"""
-class Config(BaseProxyConfig):
-        def do_update(self, helper: ConfigUpdateHelper) -> None:"""
-
 
 class Poll:
     def __init__(self, question, choices):
