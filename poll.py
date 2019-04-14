@@ -44,11 +44,12 @@ class Poll:
         # Formats the results with percentages
         results = "<br />".join(
             [
-                f"{choice:<12}: {self.votes[i]:<12} | {round(self.votes[i]/self.total if self.total else 0,3) * 100}%"
+                f"<tr><td>{choice}:</td> <td>{self.votes[i]}</td><td>{round(self.votes[i]/self.total if self.total else 0,3) * 100}%</td></tr>"
                 for i, choice in enumerate(self.choices)
             ]
         )
-        results = f"{self.question}:<br />" + results
+        results = "<table>" + results + "</table>"
+        #results = f"|{self.question}:<br />|" + results
         return results
 
     def close_poll(self):
@@ -62,12 +63,11 @@ class PollPlugin(Plugin):
     async def poll(self) -> None:
         pass
 
-    @poll.subcommand("new")
+    @poll.subcommand("new", help='Creates a new poll with "Question" "choice" "choice" "choice" ...')
     @command.argument(
         "poll_setup",
         pass_raw=True,
-        required=True,
-        help='Creates a new poll with "Question" "choice" "choice" "choice" ... ',
+        required=True
     )
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
@@ -89,9 +89,9 @@ class PollPlugin(Plugin):
 
         await evt.reply(response, html_in_markdown=True)
 
-    @poll.subcommand("vote")
+    @poll.subcommand("vote", help="Votes for an option")
     @command.argument(
-        "choice", pass_raw=True, required=True, help="Votes for an option"
+        "choice", pass_raw=True, required=True
     )
     async def handler(self, evt: MessageEvent, choice: int) -> None:
         await evt.mark_read()
