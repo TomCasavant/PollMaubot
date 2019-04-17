@@ -44,8 +44,7 @@ class Poll:
                 for i, choice in enumerate(self.choices)
             ]
         )
-        results = "<table>" + results + "</table>"
-        #results = f"|{self.question}:<br />|" + results
+        results = f"{self.question}: <br /> <table>" + results + "</table>"
         return results
 
     def close_poll(self):
