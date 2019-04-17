@@ -11,7 +11,7 @@ A plugin for [maubot](https://github.com/maubot/maubot) that creates a poll in a
 '!poll close' - Ends the poll
 
 
-## Wish List
+## Wish List 
 - Add user configuration to only allow certain users to create polls
 - Add auto-timing ability
 - Add ability to run multiple polls at once
