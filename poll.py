@@ -40,7 +40,7 @@ class Poll:
         # Formats the results with percentages
         results = "<br />".join(
             [
-                f"<tr><td>{choice}:</td> <td>{self.votes[i]}</td><td>{round(self.votes[i]/self.total if self.total else 0,3) * 100}%</td></tr>"
+                f"<tr><td>{choice}:</td> <td> {self.votes[i]}</td><td> {round(self.votes[i]/self.total if self.total else 0,3) * 100}%</td></tr>"
                 for i, choice in enumerate(self.choices)
             ]
         )
