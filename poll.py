@@ -82,7 +82,7 @@ class PollPlugin(Plugin):
             )
             response = f"{question}<br />{choice_list}"
 
-        await evt.reply(response, html_in_markdown=True)
+        await evt.reply(response, allow_html=True)
 
     @poll.subcommand("vote", help="Votes for an option")
     @command.argument(
@@ -106,7 +106,7 @@ class PollPlugin(Plugin):
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        await evt.reply(self.currentPoll.get_results(), html_in_markdown=True)
+        await evt.reply(self.currentPoll.get_results(), allow_html=True)
 
     @poll.subcommand("close", help="Ends the poll")
     async def handler(self, evt: MessageEvent) -> None:
