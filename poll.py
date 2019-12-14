@@ -1,12 +1,15 @@
 import re
+import random
 from typing import List, Tuple
 from mautrix.util.config import BaseProxyConfig, ConfigUpdateHelper
+from mautrix.types import (EventType, ReactionEvent)
 from maubot import Plugin, MessageEvent
 from maubot.handlers import command
 
 
 QUOTES_REGEX = r"\"?\s*?\""  # Regex to split string between quotes
-
+# [Thumbs Up, Thumbs Down, Grinning, Ghost, Robot, Okay Hand, Clapping Hands, Hundred]
+REACTIONS = ["\U0001F44D", "\U0001F44E", "\U0001F600", "\U0001F47B", "\U0001F916", "\U0001F44C", "\U0001F44F", "\U0001F4AF"]
 
 class Poll:
     def __init__(self, question, choices):
@@ -17,9 +20,11 @@ class Poll:
         self.active = True  # Begins the poll
         self.total = 0
 
+        self.emojis = random.sample(REACTIONS, len(choices)) # Select a random assortment of emojis
+
     def vote(self, choice, user_id):
         # Adds a vote to the given choice
-        self.votes[choice - 1] += 1
+        self.votes[choice] += 1
         # Adds user to list of users who have already voted
         self.voters.append(user_id)
         self.total += 1
@@ -64,6 +69,7 @@ class PollPlugin(Plugin):
         pass_raw=True,
         required=True
     )
+
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
         r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
@@ -78,30 +84,10 @@ class PollPlugin(Plugin):
             self.currentPoll = Poll(question, choices)
             # Show users active poll
             choice_list = "<br />".join(
-                [f"{i+1}. {choice}" for i, choice in enumerate(choices)]
+                [f"{self.currentPoll.emojis[i]} - {choice}" for i, choice in enumerate(choices)]
             )
             response = f"{question}<br />{choice_list}"
-
-        await evt.reply(response, allow_html=True)
-
-    @poll.subcommand("vote", help="Votes for an option")
-    @command.argument(
-        "choice", pass_raw=True, required=True
-    )
-    async def handler(self, evt: MessageEvent, choice: int) -> None:
-        await evt.mark_read()
-        # Verify the user is able to vote
-        if self.currentPoll.hasVoted(evt.sender):
-            await evt.reply("You've already voted in this poll")
-        elif not self.currentPoll.isActive():
-            await evt.reply("I'm sorry this poll has already ended")
-        else:
-            # Checks if user entered a valid vote
-            if self.currentPoll.isAvailable(int(choice)):
-                # Makes the vote
-                self.currentPoll.vote(int(choice), evt.sender)
-            else:
-                await evt.reply("You must enter a valid choice")
+        self.currentPoll.event_id = await evt.reply(response, allow_html=True)
 
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
@@ -113,3 +99,12 @@ class PollPlugin(Plugin):
         await evt.mark_read()
         self.currentPoll.close_poll()
         await evt.reply("This poll is now over. Type !poll results to see the results.")
+
+    @command.passive(regex=r"(?:("+'|'.join(REACTIONS) + r")[\U0001F3FB-\U0001F3FF]?)",
+                     field=lambda evt: evt.content.relates_to.key,
+                     event_type=EventType.REACTION, msgtypes=None)
+    async def get_react_vote(self, evt: ReactionEvent, _: Tuple[str]) -> None:
+        if (evt.content.relates_to.event_id == self.currentPoll.event_id): # Is this on the correct message?
+            if not self.currentPoll.hasVoted(evt.sender): # has the user already voted?
+                if (evt.content.relates_to.key in self.currentPoll.emojis): # Is this a possible choice?
+                    self.currentPoll.vote(self.currentPoll.emojis.index(evt.content.relates_to.key), evt.sender) # Add vote/sender to poll
