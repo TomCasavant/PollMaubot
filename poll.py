@@ -57,7 +57,7 @@ class Poll:
 
 
 class PollPlugin(Plugin):
-    currentPoll = Poll("None", ["None"])
+    currentPolls = {}
 
     @command.new("poll", help="Make a poll")
     async def poll(self) -> None:
@@ -81,30 +81,36 @@ class PollPlugin(Plugin):
         if len(choices) <= 1:
             response = "You need to enter at least 2 choices."
         else:
-            self.currentPoll = Poll(question, choices)
+            self.currentPolls[evt.room_id] = Poll(question, choices)
             # Show users active poll
             choice_list = "<br />".join(
-                [f"{self.currentPoll.emojis[i]} - {choice}" for i, choice in enumerate(choices)]
+                [f"{self.currentPolls[evt.room_id].emojis[i]} - {choice}" for i, choice in enumerate(choices)]
             )
             response = f"{question}<br />{choice_list}"
-        self.currentPoll.event_id = await evt.reply(response, allow_html=True)
+        self.currentPolls[evt.room_id].event_id = await evt.reply(response, allow_html=True)
 
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        await evt.reply(self.currentPoll.get_results(), allow_html=True)
+        if evt.room_id in self.currentPolls:
+            await evt.reply(self.currentPolls[evt.room_id].get_results(), allow_html=True)
+        else:
+            await evt.reply("There is no active poll in this room", allow_html=True)
 
     @poll.subcommand("close", help="Ends the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        self.currentPoll.close_poll()
-        await evt.reply("This poll is now over. Type !poll results to see the results.")
+        if evt.room_id in self.currentPolls:
+            self.currentPolls[evt.room_id].close_poll()
+            await evt.reply("This poll is now over. Type !poll results to see the results.")
+        else:
+            await evt.reply("There is no active poll in this room")
 
     @command.passive(regex=r"(?:("+'|'.join(REACTIONS) + r")[\U0001F3FB-\U0001F3FF]?)",
                      field=lambda evt: evt.content.relates_to.key,
                      event_type=EventType.REACTION, msgtypes=None)
     async def get_react_vote(self, evt: ReactionEvent, _: Tuple[str]) -> None:
-        if (evt.content.relates_to.event_id == self.currentPoll.event_id): # Is this on the correct message?
-            if not self.currentPoll.hasVoted(evt.sender): # has the user already voted?
-                if (evt.content.relates_to.key in self.currentPoll.emojis): # Is this a possible choice?
-                    self.currentPoll.vote(self.currentPoll.emojis.index(evt.content.relates_to.key), evt.sender) # Add vote/sender to poll
+        if (evt.content.relates_to.event_id == self.currentPolls[evt.room_id].event_id): # Is this on the correct message?
+            if not self.currentPolls[evt.room_id].hasVoted(evt.sender): # has the user already voted?
+                if (evt.content.relates_to.key in self.currentPolls[evt.room_id].emojis): # Is this a possible choice?
+                    self.currentPolls[evt.room_id].vote(self.currentPolls[evt.room_id].emojis.index(evt.content.relates_to.key), evt.sender) # Add vote/sender to poll

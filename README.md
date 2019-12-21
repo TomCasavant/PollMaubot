@@ -13,9 +13,11 @@ Users vote by adding the matching emoji to the poll (i.e. if the first choice ha
 ## Version 2.0
  - Changed voting format to reactions (instead of '!poll vote')
 
+### Version 2.0.1
+  - Allows every room to have unique poll
+
 ## Wish List
 - Add user configuration to only allow certain users to create polls
 - Add auto-timing ability
-- Add ability to run multiple polls at once
 - Make emojis configurable
 - Add placeholder emojis on each poll (to let users just click one)
