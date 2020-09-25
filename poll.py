@@ -8,8 +8,8 @@ from maubot.handlers import command
 
 
 QUOTES_REGEX = r"\"?\s*?\""  # Regex to split string between quotes
-# [Thumbs Up, Thumbs Down, Grinning, Ghost, Robot, Okay Hand, Clapping Hands, Hundred]
-REACTIONS = ["\U0001F44D", "\U0001F44E", "\U0001F600", "\U0001F47B", "\U0001F916", "\U0001F44C", "\U0001F44F", "\U0001F4AF"]
+# [Octopus, Ghost, Robot, Okay Hand, Clapping Hands, Hundred, Pizza Slice, Taco, Bomb, Checquered Flag]
+REACTIONS = ["\U0001F44D", "\U0001F44E", "\U0001F419", "\U0001F47B", "\U0001F916", "\U0001F44C", "\U0001F44F", "\U0001F4AF", "\U0001F355", "\U0001F32E", "\U0001F4A3", "\U0001F3C1"]
 
 class Poll:
     def __init__(self, question, choices):
