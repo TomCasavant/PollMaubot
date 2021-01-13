@@ -72,10 +72,15 @@ class PollPlugin(Plugin):
 
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
-        r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
-        setup = [
-            s for s in r.split(poll_setup) if s != ""
-        ]  # Split string between quotes
+        question = ""
+        choices = []
+        if poll_setup[0] == '"':
+            r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
+            setup = [
+                s for s in r.split(poll_setup) if s != ""
+            ]  # Split string between quotes
+        else:
+            setup = re.findall(r"^.*$", poll_setup, re.MULTILINE)
         question = setup[0]
         choices = setup[1 : len(setup)]
         if len(choices) <= 1:
