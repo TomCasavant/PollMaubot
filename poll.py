@@ -82,7 +82,7 @@ class PollPlugin(Plugin):
         else:
             setup = re.findall(r"^.*$", poll_setup, re.MULTILINE)
         question = setup[0]
-        choices = setup[1 : len(setup)]
+        choices = setup[1:]
         if len(choices) <= 1:
             response = "You need to enter at least 2 choices."
         else:
