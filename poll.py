@@ -93,6 +93,8 @@ class PollPlugin(Plugin):
             )
             response = f"{question}<br />{choice_list}"
         self.currentPolls[evt.room_id].event_id = await evt.reply(response, allow_html=True)
+        for emoji in self.currentPolls[evt.room_id].emojis:
+            await evt.client.react(evt.room_id, self.currentPolls[evt.room_id].event_id, emoji)
 
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
