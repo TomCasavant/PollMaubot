@@ -10,9 +10,10 @@ from maubot.handlers import command
 QUOTES_REGEX = r"\"?\s*?\""  # Regex to split string between quotes
 # [Octopus, Ghost, Robot, Okay Hand, Clapping Hands, Hundred, Pizza Slice, Taco, Bomb, Checquered Flag]
 REACTIONS = ["\U0001F44D", "\U0001F44E", "\U0001F419", "\U0001F47B", "\U0001F916", "\U0001F44C", "\U0001F44F", "\U0001F4AF", "\U0001F355", "\U0001F32E", "\U0001F4A3", "\U0001F3C1"]
+EMOJI_REGEX = r"^[\u2600-\u26FF\u2700-\u27BF\U0001F300-\U0001F5FF\U0001F600-\U0001F64F\U0001F680-\U0001F6FF\U0001F900-\U0001F9FF]"
 
 class Poll:
-    def __init__(self, question, choices):
+    def __init__(self, question, choices, emojis=None):
         self.question = question
         self.choices = choices
         self.votes = [0] * len(choices)  # initialize all votes to zero
@@ -20,7 +21,17 @@ class Poll:
         self.active = True  # Begins the poll
         self.total = 0
 
-        self.emojis = random.sample(REACTIONS, len(choices)) # Select a random assortment of emojis
+        if emojis:
+            self.emojis = []
+            reactions_filtered = list(set(REACTIONS).difference(set(emojis)))
+            emojis_random = random.sample(reactions_filtered, emojis.count(None))
+            for emoji in emojis:
+                if emoji:
+                    self.emojis.append(emoji)
+                else:
+                    self.emojis.append(emojis_random.pop())
+        else:
+            self.emojis = random.sample(REACTIONS, len(choices)) # Select a random assortment of emojis
 
     def vote(self, choice, user_id):
         # Adds a vote to the given choice
@@ -72,22 +83,42 @@ class PollPlugin(Plugin):
 
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
-        r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
-        setup = [
-            s for s in r.split(poll_setup) if s != ""
-        ]  # Split string between quotes
+        question = ""
+        choices = []
+        if poll_setup[0] == '"':
+            r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
+            setup = [
+                s for s in r.split(poll_setup) if s != ""
+            ]  # Split string between quotes
+        else:
+            setup = re.findall(r"^.*$", poll_setup, re.MULTILINE)
         question = setup[0]
-        choices = setup[1 : len(setup)]
+        choices = setup[1:]
         if len(choices) <= 1:
             response = "You need to enter at least 2 choices."
         else:
-            self.currentPolls[evt.room_id] = Poll(question, choices)
+            emojis = []
+            r = re.compile(EMOJI_REGEX)
+            for i, choice in enumerate(choices):
+                choice_tmp = choice.strip()
+                x = r.search(choice_tmp[0])
+                if x:
+                    emoji = choice_tmp[0]
+                    choice_tmp = choice_tmp[1:].strip()
+                else:
+                    emoji = None
+                choices[i] = choice_tmp
+                emojis.append(emoji)
+
+            self.currentPolls[evt.room_id] = Poll(question, choices, emojis)
             # Show users active poll
             choice_list = "<br />".join(
                 [f"{self.currentPolls[evt.room_id].emojis[i]} - {choice}" for i, choice in enumerate(choices)]
             )
             response = f"{question}<br />{choice_list}"
         self.currentPolls[evt.room_id].event_id = await evt.reply(response, allow_html=True)
+        for emoji in self.currentPolls[evt.room_id].emojis:
+            await evt.client.react(evt.room_id, self.currentPolls[evt.room_id].event_id, emoji)
 
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
