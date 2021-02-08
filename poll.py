@@ -137,7 +137,7 @@ class PollPlugin(Plugin):
         else:
             await evt.reply("There is no active poll in this room")
 
-    @command.passive(regex=r"(?:("+'|'.join(REACTIONS) + r")[\U0001F3FB-\U0001F3FF]?)",
+    @command.passive(regex=EMOJI_REGEX,
                      field=lambda evt: evt.content.relates_to.key,
                      event_type=EventType.REACTION, msgtypes=None)
     async def get_react_vote(self, evt: ReactionEvent, _: Tuple[str]) -> None:
