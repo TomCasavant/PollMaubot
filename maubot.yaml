@@ -9,7 +9,7 @@ maubot: 0.1.0
 id: casavant.tom.poll
 
 # A PEP 440 compliant version string.
-version: 3.0.0
+version: 3.0.1
 
 # The SPDX license identifier for the plugin. https://spdx.org/licenses/
 # Optional, assumes all rights reserved if omitted.
