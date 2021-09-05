@@ -74,6 +74,13 @@ class Poll:
 class PollPlugin(Plugin):
     currentPolls = {}
 
+    def hasActivePoll(self, room_id):
+        poll = self.getPoll(room_id)
+        return poll is not None and poll.isActive()
+
+    def getPoll(self, room_id):
+        return self.currentPolls.get(room_id, None)
+
     @command.new("poll", help="Make a poll")
     async def poll(self) -> None:
         pass
@@ -86,8 +93,11 @@ class PollPlugin(Plugin):
     )
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
-        question = ""
-        choices = []
+
+        if self.hasActivePoll(evt.room_id):
+            await evt.reply("A poll is active, please close the poll before creating a new one.", allow_html=False)
+            return
+
         if poll_setup[0] == '"':
             r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
             setup = [
@@ -127,18 +137,19 @@ class PollPlugin(Plugin):
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        if evt.room_id in self.currentPolls:
-            if self.currentPolls[evt.room_id].isActive():
+        poll = self.getPoll(evt.room_id)
+        if poll is not None:
+            if poll.isActive():
                 await evt.reply("Poll is active, please close the poll before asking for results.", allow_html=True)
             else:
-                await evt.reply(self.currentPolls[evt.room_id].get_results(), allow_html=True)
+                await evt.reply(poll.get_results(), allow_html=True)
         else:
             await evt.reply("There is no active poll in this room", allow_html=True)
 
     @poll.subcommand("close", help="Ends the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        if evt.room_id in self.currentPolls and self.currentPolls[evt.room_id].isActive():
+        if self.hasActivePoll(evt.room_id):
             self.currentPolls[evt.room_id].close_poll()
             await evt.reply("This poll is now over. Type !poll results to see the results.")
         else:
