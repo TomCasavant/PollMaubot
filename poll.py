@@ -9,8 +9,10 @@ from maubot.handlers import command
 
 QUOTES_REGEX = r"\"?\s*?\""  # Regex to split string between quotes
 # [Octopus, Ghost, Robot, Okay Hand, Clapping Hands, Hundred, Pizza Slice, Taco, Bomb, Checquered Flag]
-REACTIONS = ["\U0001F44D", "\U0001F44E", "\U0001F419", "\U0001F47B", "\U0001F916", "\U0001F44C", "\U0001F44F", "\U0001F4AF", "\U0001F355", "\U0001F32E", "\U0001F4A3", "\U0001F3C1"]
+REACTIONS = ["\U0001F44D", "\U0001F44E", "\U0001F419", "\U0001F47B", "\U0001F916", "\U0001F44C",
+             "\U0001F44F", "\U0001F4AF", "\U0001F355", "\U0001F32E", "\U0001F4A3", "\U0001F3C1"]
 EMOJI_REGEX = r"^[\u2600-\u26FF\u2700-\u27BF\U0001F300-\U0001F5FF\U0001F600-\U0001F64F\U0001F680-\U0001F6FF\U0001F900-\U0001F9FF]"
+
 
 class Poll:
     def __init__(self, question, choices, emojis=None):
@@ -24,14 +26,16 @@ class Poll:
         if emojis:
             self.emojis = []
             reactions_filtered = list(set(REACTIONS).difference(set(emojis)))
-            emojis_random = random.sample(reactions_filtered, emojis.count(None))
+            emojis_random = random.sample(
+                reactions_filtered, emojis.count(None))
             for emoji in emojis:
                 if emoji:
                     self.emojis.append(emoji)
                 else:
                     self.emojis.append(emojis_random.pop())
         else:
-            self.emojis = random.sample(REACTIONS, len(choices)) # Select a random assortment of emojis
+            # Select a random assortment of emojis
+            self.emojis = random.sample(REACTIONS, len(choices))
 
     def vote(self, choice, user_id):
         # Adds a vote to the given choice
@@ -70,6 +74,13 @@ class Poll:
 class PollPlugin(Plugin):
     currentPolls = {}
 
+    def hasActivePoll(self, room_id):
+        poll = self.getPoll(room_id)
+        return poll is not None and poll.isActive()
+
+    def getPoll(self, room_id):
+        return self.currentPolls.get(room_id, None)
+
     @command.new("poll", help="Make a poll")
     async def poll(self) -> None:
         pass
@@ -80,11 +91,13 @@ class PollPlugin(Plugin):
         pass_raw=True,
         required=True
     )
-
     async def handler(self, evt: MessageEvent, poll_setup: str) -> None:
         await evt.mark_read()
-        question = ""
-        choices = []
+
+        if self.hasActivePoll(evt.room_id):
+            await evt.reply("A poll is active, please close the poll before creating a new one.", allow_html=False)
+            return
+
         if poll_setup[0] == '"':
             r = re.compile(QUOTES_REGEX)  # Compiles regex for quotes
             setup = [
@@ -113,7 +126,8 @@ class PollPlugin(Plugin):
             self.currentPolls[evt.room_id] = Poll(question, choices, emojis)
             # Show users active poll
             choice_list = "<br />".join(
-                [f"{self.currentPolls[evt.room_id].emojis[i]} - {choice}" for i, choice in enumerate(choices)]
+                [f"{self.currentPolls[evt.room_id].emojis[i]} - {choice}" for i,
+                    choice in enumerate(choices)]
             )
             response = f"{question}<br />{choice_list}"
         self.currentPolls[evt.room_id].event_id = await evt.reply(response, allow_html=True)
@@ -123,15 +137,19 @@ class PollPlugin(Plugin):
     @poll.subcommand("results", help="Prints out the current results of the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        if evt.room_id in self.currentPolls:
-            await evt.reply(self.currentPolls[evt.room_id].get_results(), allow_html=True)
+        poll = self.getPoll(evt.room_id)
+        if poll is not None:
+            if poll.isActive():
+                await evt.reply("Poll is active, please close the poll before asking for results.", allow_html=True)
+            else:
+                await evt.reply(poll.get_results(), allow_html=True)
         else:
             await evt.reply("There is no active poll in this room", allow_html=True)
 
     @poll.subcommand("close", help="Ends the poll")
     async def handler(self, evt: MessageEvent) -> None:
         await evt.mark_read()
-        if evt.room_id in self.currentPolls:
+        if self.hasActivePoll(evt.room_id):
             self.currentPolls[evt.room_id].close_poll()
             await evt.reply("This poll is now over. Type !poll results to see the results.")
         else:
@@ -141,7 +159,11 @@ class PollPlugin(Plugin):
                      field=lambda evt: evt.content.relates_to.key,
                      event_type=EventType.REACTION, msgtypes=None)
     async def get_react_vote(self, evt: ReactionEvent, _: Tuple[str]) -> None:
-        if (evt.content.relates_to.event_id == self.currentPolls[evt.room_id].event_id): # Is this on the correct message?
-            if not self.currentPolls[evt.room_id].hasVoted(evt.sender): # has the user already voted?
-                if (evt.content.relates_to.key in self.currentPolls[evt.room_id].emojis): # Is this a possible choice?
-                    self.currentPolls[evt.room_id].vote(self.currentPolls[evt.room_id].emojis.index(evt.content.relates_to.key), evt.sender) # Add vote/sender to poll
+        # Is this on the correct message?
+        if (evt.content.relates_to.event_id == self.currentPolls[evt.room_id].event_id):
+            # has the user already voted?
+            if not self.currentPolls[evt.room_id].hasVoted(evt.sender):
+                # Is this a possible choice?
+                if (evt.content.relates_to.key in self.currentPolls[evt.room_id].emojis):
+                    self.currentPolls[evt.room_id].vote(self.currentPolls[evt.room_id].emojis.index(
+                        evt.content.relates_to.key), evt.sender)  # Add vote/sender to poll
