@@ -1,3 +1,5 @@
+Archiving since Matrix/Element have had poll support for a few years now
+
 # Poll Maubot
 A plugin for [maubot](https://github.com/maubot/maubot) that creates a poll in a riot room and allows users to vote
 
